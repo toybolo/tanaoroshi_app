@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { StocktakeCounter } from "@/components/stocktake/StocktakeCounter";
-import { completeStocktake } from "../actions";
+import { completeStocktake, syncNewProducts } from "../actions";
 import type { Stocktake, StocktakeItemWithProduct } from "@/lib/types/stocktake";
 
 export default async function StocktakeDetailPage({
@@ -30,9 +30,32 @@ export default async function StocktakeDetailPage({
 
   const stocktakeRow = stocktake as Stocktake;
 
+  // 棚卸し開始後に登録され、まだこの棚卸しに含まれていない商品の件数を数える
+  let newProductCount = 0;
+  if (stocktakeRow.status === "in_progress") {
+    const { data: allProducts } = await supabase
+      .from("products")
+      .select("id")
+      .eq("user_id", stocktakeRow.user_id);
+    const includedIds = new Set(
+      (items ?? []).map(
+        (item) =>
+          (item as unknown as StocktakeItemWithProduct).products.id,
+      ),
+    );
+    newProductCount = (allProducts ?? []).filter(
+      (p) => !includedIds.has(p.id),
+    ).length;
+  }
+
   const boundComplete = async () => {
     "use server";
     await completeStocktake(id);
+  };
+
+  const boundSync = async () => {
+    "use server";
+    await syncNewProducts(id);
   };
 
   return (
@@ -60,12 +83,30 @@ export default async function StocktakeDetailPage({
         )}
       </div>
 
+      {stocktakeRow.status === "in_progress" && newProductCount > 0 && (
+        <form
+          action={boundSync}
+          className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded border border-blue-200 bg-blue-50 px-4 py-3"
+        >
+          <p className="text-sm text-blue-800">
+            この棚卸しを開始した後に登録された商品が {newProductCount} 件あります。
+          </p>
+          <button
+            type="submit"
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            新しく登録した商品を取り込む
+          </button>
+        </form>
+      )}
+
       {(items?.length ?? 0) === 0 ? (
         <p className="text-sm text-gray-500">
           対象商品がありません（商品登録がない状態で開始された棚卸しです）。
         </p>
       ) : (
         <StocktakeCounter
+          key={(items ?? []).map((item) => item.id).join(",")}
           stocktakeId={id}
           readOnly={stocktakeRow.status === "completed"}
           items={(items as unknown as StocktakeItemWithProduct[]).map((item) => ({

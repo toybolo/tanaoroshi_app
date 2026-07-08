@@ -73,6 +73,57 @@ export async function updateStocktakeItemCount(
     .eq("id", itemId);
 }
 
+export async function syncNewProducts(stocktakeId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // 対象の棚卸しが本人のもので、かつ実施中であることを確認する
+  const { data: stocktake } = await supabase
+    .from("stocktakes")
+    .select("id, status")
+    .eq("id", stocktakeId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!stocktake || stocktake.status !== "in_progress") {
+    return;
+  }
+
+  // この棚卸しにまだ含まれていない商品を洗い出す
+  const [{ data: products }, { data: existingItems }] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id, stock_quantity")
+      .eq("user_id", user.id),
+    supabase
+      .from("stocktake_items")
+      .select("product_id")
+      .eq("stocktake_id", stocktakeId),
+  ]);
+
+  const existingProductIds = new Set(
+    (existingItems ?? []).map((item) => item.product_id),
+  );
+
+  const newItems = (products ?? [])
+    .filter((p) => !existingProductIds.has(p.id))
+    .map((p) => ({
+      stocktake_id: stocktakeId,
+      product_id: p.id,
+      book_quantity: p.stock_quantity,
+      counted: false,
+    }));
+
+  if (newItems.length > 0) {
+    await supabase.from("stocktake_items").insert(newItems);
+  }
+
+  revalidatePath(`/stocktake/${stocktakeId}`);
+}
+
 export async function completeStocktake(stocktakeId: string) {
   const supabase = await createClient();
   const {
