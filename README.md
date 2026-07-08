@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 棚卸し在庫管理アプリ
 
-## Getting Started
+物販・在庫管理における「棚卸し（実地棚卸）」を楽にするための Web アプリです。
+商品ごとに在庫数・販売価格・仕入価格を管理し、定期的な棚卸しで
+「帳簿上の在庫」と「実際に数えた在庫」の差異を素早く把握できます。
 
-First, run the development server:
+## 技術構成
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+| レイヤー | 技術 |
+|---|---|
+| フロント / API | Next.js（App Router）+ TypeScript |
+| デザイン | Tailwind CSS |
+| DB / 認証 / ストレージ | Supabase（PostgreSQL / Auth / Storage） |
+| アクセス制御 | Supabase RLS |
+| バーコード読取 | html5-qrcode |
+| CSV 入出力 | papaparse |
+| グラフ | recharts |
+| ホスティング | Vercel |
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 主な機能
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- 認証（メール＋パスワード、未ログイン時はログイン画面へリダイレクト）
+- 商品マスタ CRUD・一覧・検索・並び替え・カテゴリフィルタ・画像アップロード
+- 集計ダッシュボード（在庫評価額・想定粗利・カテゴリ別グラフ）
+- 棚卸しモード（帳簿在庫スナップショット・カウント・差異ハイライト・履歴）
+- バーコード / QR スキャンによる数量入力
+- CSV インポート / エクスポート
+- PWA 対応（ホーム画面に追加可能）
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## セットアップ
 
-## Learn More
+1. 依存関係をインストール
+   ```bash
+   npm install
+   ```
+2. `.env.local.example` をコピーして `.env.local` を作成し、Supabase の接続情報を設定
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+   NEXT_PUBLIC_SITE_URL=http://localhost:3000
+   ```
+3. Supabase の SQL Editor で `supabase/schema.sql` を実行（テーブル・RLS・Storage バケットを作成）
+4. 開発サーバーを起動
+   ```bash
+   npm run dev
+   ```
+5. [http://localhost:3000](http://localhost:3000) を開く
 
-To learn more about Next.js, take a look at the following resources:
+## デプロイ
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+GitHub リポジトリを Vercel にインポートし、環境変数
+（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `NEXT_PUBLIC_SITE_URL`）
+を設定するとデプロイできます。Supabase の Authentication → URL Configuration に
+本番 URL を登録してください。
