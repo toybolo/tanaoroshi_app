@@ -15,18 +15,24 @@ type ProductFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   defaultValues?: ProductFormValues;
   submitLabel: string;
+  hiddenFields?: Record<string, string>;
 };
 
 export function ProductForm({
   action,
   defaultValues,
   submitLabel,
+  hiddenFields,
 }: ProductFormProps) {
   return (
     <form
       action={action}
       className="max-w-xl space-y-4 rounded border border-gray-200 bg-white p-6"
     >
+      {hiddenFields &&
+        Object.entries(hiddenFields).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
       <div>
         <label htmlFor="image" className="block text-sm font-medium text-gray-700">
           商品画像

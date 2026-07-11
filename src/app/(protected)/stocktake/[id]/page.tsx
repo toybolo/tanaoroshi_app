@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { StocktakeCounter } from "@/components/stocktake/StocktakeCounter";
@@ -72,14 +73,22 @@ export default async function StocktakeDetailPage({
           </p>
         </div>
         {stocktakeRow.status === "in_progress" && (
-          <form action={boundComplete}>
-            <button
-              type="submit"
-              className="rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/products/new?stocktake=${id}`}
+              className="rounded border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
-              棚卸しを完了する
-            </button>
-          </form>
+              ＋ 商品を登録して追加
+            </Link>
+            <form action={boundComplete}>
+              <button
+                type="submit"
+                className="rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+              >
+                棚卸しを完了する
+              </button>
+            </form>
+          </div>
         )}
       </div>
 

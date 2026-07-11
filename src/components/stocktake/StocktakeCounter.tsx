@@ -26,6 +26,7 @@ const FILTER_LABELS: Record<FilterKey, string> = {
 };
 
 export function StocktakeCounter({
+  stocktakeId,
   items: initialItems,
   readOnly,
 }: {
@@ -125,7 +126,7 @@ export function StocktakeCounter({
             <>
               {" "}
               <Link
-                href={`/products/new?management_code=${encodeURIComponent(scanMessage.code)}`}
+                href={`/products/new?stocktake=${stocktakeId}&management_code=${encodeURIComponent(scanMessage.code)}`}
                 className="font-semibold underline"
               >
                 商品を新規登録する

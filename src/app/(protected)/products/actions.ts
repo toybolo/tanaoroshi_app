@@ -62,12 +62,18 @@ export async function createProduct(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const stocktakeId = String(formData.get("stocktake_id") ?? "").trim();
+  const newPageWithError = (message: string) => {
+    const params = new URLSearchParams();
+    if (stocktakeId) params.set("stocktake", stocktakeId);
+    params.set("error", message);
+    return `/products/new?${params.toString()}`;
+  };
+
   const parsed = parseProductFields(formData);
 
   if (!parsed.success) {
-    redirect(
-      `/products/new?error=${encodeURIComponent(parsed.error.issues[0].message)}`,
-    );
+    redirect(newPageWithError(parsed.error.issues[0].message));
   }
 
   const { imageUrl, error: imageError } = await uploadProductImage(
@@ -77,15 +83,39 @@ export async function createProduct(formData: FormData) {
   );
 
   if (imageError) {
-    redirect(`/products/new?error=${encodeURIComponent(imageError)}`);
+    redirect(newPageWithError(imageError));
   }
 
-  const { error } = await supabase
+  const { data: created, error } = await supabase
     .from("products")
-    .insert({ ...parsed.data, image_url: imageUrl ?? null, user_id: user.id });
+    .insert({ ...parsed.data, image_url: imageUrl ?? null, user_id: user.id })
+    .select("id")
+    .single();
 
-  if (error) {
-    redirect(`/products/new?error=${encodeURIComponent(error.message)}`);
+  if (error || !created) {
+    redirect(newPageWithError(error?.message ?? "登録に失敗しました"));
+  }
+
+  // 棚卸し画面から登録された場合は、その実施中の棚卸しにも追加する
+  if (stocktakeId) {
+    const { data: stocktake } = await supabase
+      .from("stocktakes")
+      .select("id, status")
+      .eq("id", stocktakeId)
+      .eq("user_id", user.id)
+      .single();
+
+    if (stocktake && stocktake.status === "in_progress") {
+      await supabase.from("stocktake_items").insert({
+        stocktake_id: stocktakeId,
+        product_id: created.id,
+        book_quantity: parsed.data.stock_quantity,
+        counted: false,
+      });
+      revalidatePath("/products");
+      revalidatePath(`/stocktake/${stocktakeId}`);
+      redirect(`/stocktake/${stocktakeId}`);
+    }
   }
 
   revalidatePath("/products");
